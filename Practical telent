@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="te">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PRACTICAL TALENT</title>
+
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#0b1020;color:white}
+header{background:#151d33;padding:18px;text-align:center}
+header h1{margin:0;color:#ffcc45}
+header p{color:#bdc7dc}
+main{max-width:650px;margin:auto;padding:16px}
+.card{background:#151d33;padding:18px;border-radius:15px;margin:15px 0}
+h2{color:#ffcc45}
+input,select,textarea{
+ width:100%;padding:13px;margin:7px 0;
+ border-radius:8px;border:1px solid #38445e;
+ background:#0b1020;color:white;font-size:16px
+}
+button{padding:12px;border:0;border-radius:8px;
+ background:#ffcc45;color:#111827;font-weight:bold;
+ cursor:pointer;margin:5px 0}
+.full{width:100%}
+.secondary{background:#34415e;color:white}
+.hidden{display:none}
+.profile{border:1px solid #38445e;padding:14px;
+ border-radius:12px;margin:12px 0}
+nav{display:flex;flex-wrap:wrap;gap:5px}
+nav button{flex:1}
+.small{color:#bdc7dc;font-size:13px}
+</style>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+</head>
+
+<body>
+
+<header>
+<h1>🎬 PRACTICAL TALENT</h1>
+<p>Discover Talent. Create Opportunities.</p>
+</header>
+
+<main>
+
+<!-- LOGIN -->
+<section id="loginPage" class="card">
+<h2>Welcome 👋</h2>
+<p>నీ మొబైల్ నంబర్‌తో Login అవ్వు.</p>
+
+<input id="phone" type="tel" placeholder="+91 9876543210">
+<div id="recaptcha-container"></div>
+<button class="full" onclick="sendOTP()">Send OTP</button>
+
+<div id="otpBox" class="hidden">
+<input id="otp" type="number" placeholder="Enter OTP">
+<button class="full" onclick="verifyOTP()">Verify OTP</button>
+</div>
+
+<p id="loginMessage" class="small"></p>
+</section>
+
+<!-- PROFILE SETUP -->
+<section id="setupPage" class="card hidden">
+<h2>Create Your Profile</h2>
+
+<label>నేను ఎవరు?</label>
+<select id="role">
+<option value="artist">🎭 Artist / Actor</option>
+<option value="director">🎬 Director</option>
+<option value="writer">✍️ Writer</option>
+<option value="assistant_director">🎥 Assistant Director</option>
+<option value="technician">🛠️ Technician</option>
+</select>
+
+<input id="name" placeholder="నీ పేరు">
+<input id="age" type="number" placeholder="వయసు">
+<input id="city" placeholder="నగరం / ప్రాంతం">
+<input id="languages" placeholder="భాషలు">
+<input id="skills" placeholder="నటన / ఇతర నైపుణ్యాలు">
+<input id="photoUrl" type="url" placeholder="Profile photo URL (optional)">
+<input id="videoUrl" type="url" placeholder="Acting video URL (optional)">
+
+<button class="full" onclick="saveProfile()">Save Profile</button>
+<p id="setupMessage" class="small"></p>
+</section>
+
+<!-- DASHBOARD -->
+<section id="dashboard" class="hidden">
+
+<nav>
+<button onclick="showPage('myProfile')">My Profile</button>
+<button onclick="showPage('searchPage')">Search Talent</button>
+<button onclick="showPage('notificationsPage')">🔔 Notifications</button>
+<button onclick="showPage('chatsPage')">💬 Chats</button>
+</nav>
+
+<div id="myProfile" class="card">
+<h2>My Profile</h2>
+<div id="myProfileContent"></div>
+<button class="secondary" onclick="editProfile()">Edit Profile</button>
+</div>
+
+<div id="searchPage" class="card hidden">
+<h2>🔍 Search Talent</h2>
+<p class="small">Artists, actors, writers, technicians కోసం వెతుకు.</p>
+
+<input id="searchText" placeholder="పేరు, నగరం లేదా నైపుణ్యం">
+<select id="searchRole">
+<option value="artist">Actors / Artists</option>
+<option value="assistant_director">Assistant Directors</option>
+<option value="director">Directors</option>
+<option value="writer">Writers</option>
+<option value="technician">Technicians</option>
+<option value="all">All categories</option>
+</select>
+
+<button class="full" onclick="searchTalent()">Search</button>
+<div id="searchResults"></div>
+</div>
+
+<div id="notificationsPage" class="card hidden">
+<h2>🔔 Notifications</h2>
+<div id="notifications"></div>
+</div>
+
+<div id="chatsPage" class="card hidden">
+<h2>💬 Messages</h2>
+<div id="chatList"></div>
+<div id="chatArea" class="hidden">
+<h3 id="chatTitle"></h3>
+<div id="messages"></div>
+<input id="messageText" placeholder="Message type cheyyi">
+<button class="full" onclick="sendMessage()">Send Message</button>
+<button class="secondary" onclick="closeChat()">Close Chat</button>
+</div>
+</div>
+
+<button class="full secondary" onclick="logout()">Logout</button>
+</section>
+
+</main>
+
+<script>
+// Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyDbXb7CLjB0mEuZRE-h9NjM8hvoeoyjX14",
+  authDomain: "practical-talent.firebaseapp.com",
+  projectId: "practical-talent",
+  storageBucket: "practical-talent.firebasestorage.app",
+  messagingSenderId: "203171940354",
+  appId: "1:203171940354:web:11e1f95f3705298b18bf1b",
+  measurementId: "G-LRCVTXEP51"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+let currentUser = null;
+let currentProfile = null;
+let confirmation = null;
+let activeChat = null;
+let recaptcha = null;
+let unsubscribeMessages = null;
+let unsubscribeNotifications = null;
+let unsubscribeChats = null;
+
+const $ = id => document.getElementById(id);
+
+function showMessage(id, text) {
+  $(id).textContent = text;
+}
+
+function showPage(page) {
+  ["myProfile","searchPage","notificationsPage","chatsPage"]
+    .forEach(id => $(id).classList.add("hidden"));
+  $(page).classList.remove("hidden");
+}
+
+async function sendOTP() {
+  const phone = $("phone").value.trim();
+
+  if (!/^\+[1-9]\d{7,14}$/.test(phone)) {
+    return showMessage("loginMessage",
+      "Country codeతో నంబర్ ఇవ్వు. ఉదా: +919876543210");
+  }
+
+  try {
+    if (!recaptcha) {
+      recaptcha = new firebase.auth.RecaptchaVerifier(
+        "recaptcha-container",
+        { size: "normal" }
+      );
+      await recaptcha.render();
+    }
+
+    confirmation = await auth.signInWithPhoneNumber(phone, recaptcha);
+    $("otpBox").classList.remove("hidden");
+    showMessage("loginMessage", "OTP పంపించాం. నీ SMS చెక్ చెయ్యి.");
+  } catch (e) {
+    showMessage("loginMessage", "OTP సమస్య: " + e.message);
+    if (recaptcha) {
+      recaptcha.clear();
+      recaptcha = null;
+    }
+  }
+}
+
+async function verifyOTP() {
+  try {
+    await confirmation.confirm($("otp").value.trim());
+    showMessage("loginMessage", "Login successful!");
+  } catch (e) {
+    showMessage("loginMessage", "OTP తప్పుగా ఉంది లేదా గడువు ముగిసింది.");
+  }
+}
+
+auth.onAuthStateChanged(async user => {
+  currentUser = user;
+
+  if (!user) {
+    cleanupListeners();
+    $("loginPage").classList.remove("hidden");
+    $("setupPage").classList.add("hidden");
+    $("dashboard").classList.add("hidden");
+    return;
+  }
+
+  $("loginPage").classList.add("hidden");
+
+  try {
+    const doc = await db.collection("profiles").doc(user.uid).get();
+
+    if (!doc.exists) {
+      $("setupPage").classList.remove("hidden");
+      $("dashboard").classList.add("hidden");
+    } else {
+      currentProfile = doc.data();
+      $("setupPage").classList.add("hidden");
+      $("dashboard").classList.remove("hidden");
+      renderMyProfile();
+      startNotifications();
+      startChatList();
+    }
+  } catch (e) {
+    showMessage("loginMessage",
+      "Database సెటప్ అవసరం: " + e.message);
+  }
+});
+
+async function saveProfile() {
+  if (!currentUser) return;
+
+  const name = $("name").value.trim();
+  const age = Number($("age").value);
+
+  if (!name || !age || age < 13 || age > 100) {
+    return showMessage("setupMessage", "పేరు, సరైన వయసు ఇవ్వు.");
+  }
+
+  const data = {
+    uid: currentUser.uid,
+    name,
+    age,
+    role: $("role").value,
+    city: $("city").value.trim(),
+    languages: $("languages").value.trim(),
+    skills: $("skills").value.trim(),
+    photoUrl: $("photoUrl").value.trim(),
+    videoUrl: $("videoUrl").value.trim(),
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  try {
+    await db.collection("profiles").doc(currentUser.uid).set(data, {
+      merge: true
+    });
+
+    currentProfile = data;
+    $("setupPage").classList.add("hidden");
+    $("dashboard").classList.remove("hidden");
+    renderMyProfile();
+    startNotifications();
+    startChatList();
+  } catch (e) {
+    showMessage("setupMessage", "Profile save కాలేదు: " + e.message);
+  }
+}
+
+function renderMyProfile() {
+  const p = currentProfile;
+  if (!p) return;
+
+  $("myProfileContent").innerHTML = `
+    ${p.photoUrl ? `<img src="${safeUrl(p.photoUrl)}"
+      alt="Profile photo" style="width:100px;height:100px;object-fit:cover;border-radius:50%">` : ""}
+    <h3>${esc(p.name)}</h3>
+    <p>Role: ${esc(p.role)}</p>
+    <p>Age: ${esc(p.age)}</p>
+    <p>City: ${esc(p.city || "")}</p>
+    <p>Languages: ${esc(p.languages || "")}</p>
+    <p>Skills: ${esc(p.skills || "")}</p>
+    ${p.videoUrl ? `<p><a target="_blank" rel="noopener" href="${safeUrl(p.videoUrl)}">View Video</a></p>` : ""}
+  `;
+}
+
+function editProfile() {
+  const p = currentProfile;
+  $("role").value = p.role || "artist";
+  $("name").value = p.name || "";
+  $("age").value = p.age || "";
+  $("city").value = p.city || "";
+  $("languages").value = p.languages || "";
+  $("skills").value = p.skills || "";
+  $("photoUrl").value = p.photoUrl || "";
+  $("videoUrl").value = p.videoUrl || "";
+
+  $("setupPage").classList.remove("hidden");
+  $("dashboard").classList.add("hidden");
+}
+
+async function searchTalent() {
+  if (!currentProfile) return;
+
+  const term = $("searchText").value.trim().toLowerCase();
+  const role = $("searchRole").value;
+  const results = $("searchResults");
+  results.textContent = "Searching...";
+
+  try {
+    const snap = await db.collection("profiles").get();
+    results.innerHTML = "";
+
+    let count = 0;
+
+    snap.forEach(doc => {
+      const p = doc.data();
+
+      if (doc.id === currentUser.uid) return;
+      if (role !== "all" && p.role !== role) return;
+
+      const searchable = [
+        p.name, p.city, p.languages, p.skills, p.role
+      ].join(" ").toLowerCase();
+
+      if (term && !searchable.includes(term)) return;
+
+      count++;
+
+      const card = document.createElement("div");
+      card.className = "profile";
+
+      const title = document.createElement("h3");
+      title.textContent = p.name || "Unnamed profile";
+      card.appendChild(title);
+
+      const details = document.createElement("p");
+      details.textContent =
+        `${p.role || ""} · ${p.city || ""} · ${p.age || ""}`;
+      card.appendChild(details);
+
+      const skills = document.createElement("p");
+      skills.textContent = p.skills || "";
+      card.appendChild(skills);
+
+      if (p.photoUrl) {
+        const img = document.createElement("img");
+        img.src = safeUrl(p.photoUrl);
+        img.alt = "Profile photo";
+        img.style = "width:90px;height:90px;object-fit:cover;border-radius:12px";
+        card.appendChild(img);
+      }
+
+      if (p.videoUrl) {
+        const link = document.createElement("a");
+        link.href = safeUrl(p.videoUrl);
+        link.target = "_blank";
+        link.rel = "noopener";
+        link.textContent = "View Video";
+        card.appendChild(link);
+      }
+
+      if (currentProfile.role === "director") {
+        const select = document.createElement("button");
+        select.textContent = "OK / Select";
+        select.onclick = () => selectArtist(doc.id, p.name);
+        card.appendChild(select);
+
+        const message = document.createElement("button");
+        message.className = "secondary";
+        message.textContent = "Request Chat";
+        message.onclick = () => requestChat(doc.id, p.name);
+        card.appendChild(message);
+      }
+
+      results.appendChild(card);
+    });
+
+    if (!count) results.textContent = "Profiles కనిపించలేదు.";
+  } catch (e) {
+    results.textContent = "Search సమస్య: " + e.message;
+  }
+}
+
+async function selectArtist(artistId, artistName) {
+  if (currentProfile.role !== "director") {
+    return alert("Director account అవసరం.");
+  }
+
+  try {
+    await db.collection("notifications").add({
+      to: artistId,
+      from: currentUser.uid,
+      fromName: currentProfile.name,
+      type: "selected",
+      text: `${currentProfile.name} మీ ప్రొఫైల్‌ను Select చేశారు.`,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    alert(artistName + " ప్రొఫైల్ Select చేశావు!");
+  } catch (e) {
+    alert("Select కాలేదు: " + e.message);
+  }
+}
+
+async function requestChat(artistId, artistName) {
+  if (currentProfile.role !== "director") return;
+
+  try {
+    const existing = await db.collection("chats")
+      .where("directorId", "==", currentUser.uid)
+      .where("artistId", "==", artistId)
+      .get();
+
+    if (!existing.empty) {
+      alert("ఈ ఆర్టిస్ట్‌కు ఇప్పటికే Chat Request పంపావు.");
+      return;
+    }
+
+    const ref = await db.collection("chats").add({
+      directorId: currentUser.uid,
+      directorName: currentProfile.name,
+      artistId,
+      artistName,
+      status: "pending",
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    await db.collection("notifications").add({
+      to: artistId,
+      from: currentUser.uid,
+      fromName: currentProfile.name,
+      type: "chat_request",
+      chatId: ref.id,
+      text: `${currentProfile.name} మీకు Chat Request పంపారు.`,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    alert("Chat Request పంపించాం!");
+  } catch (e) {
+    alert("Request పంపలేకపోయాం: " + e.message);
+  }
+}
+
+function startNotifications() {
+  if (unsubscribeNotifications) unsubscribeNotifications();
+
+  unsubscribeNotifications = db.collection("notifications")
+    .where("to", "==", currentUser.uid)
+    .onSnapshot(snapshot => {
+      const box = $("notifications");
+      box.innerHTML = "";
+
+      if (snapshot.empty) {
+        box.textContent = "ఇంకా Notifications లేవు.";
+        return;
+      }
+
+      snapshot.forEach(doc => {
+        const n = doc.data();
+        const div = document.createElement("div");
+        div.className = "profile";
+
+        const text = document.createElement("p");
+        text.textContent = n.text || "Notification";
+        div.appendChild(text);
+
+        if (n.type === "chat_request") {
+          const accept = document.createElement("button");
+          accept.textContent = "Accept Chat";
+          accept.onclick = () => acceptChat(n.chatId, doc.id);
+          div.appendChild(accept);
+
+          const reject = document.createElement("button");
+          reject.className = "secondary";
+          reject.textContent = "Reject";
+          reject.onclick = () => rejectChat(n.chatId, doc.id);
+          div.appendChild(reject);
+        }
+
+        box.appendChild(div);
+      });
+    }, e => {
+      $("notifications").textContent = "Notifications లో సమస్య: " + e.message;
+    });
+}
+
+async function acceptChat(chatId, notificationId) {
+  try {
+    const ref = db.collection("chats").doc(chatId);
+    const snap = await ref.get();
+
+    if (!snap.exists || snap.data().artistId !== currentUser.uid) {
+      return alert("ఈ Chat Request‌ను Accept చేయలేరు.");
+    }
+
+    await ref.update({ status: "accepted" });
+    await db.collection("notifications").doc(notificationId).delete();
+
+    alert("Chat Accept చేశావు! Chats విభాగంలో చూడవచ్చు.");
+    startChatList();
+  } catch (e) {
+    alert("Accept కాలేదు: " + e.message);
+  }
+}
+
+async function rejectChat(chatId, notificationId) {
+  try {
+    const ref = db.collection("chats").doc(chatId);
+    const snap = await ref.get();
+
+    if (!snap.exists || snap.data().artistId !== currentUser.uid) {
+      return alert("ఈ Request‌ను Reject చేయలేరు.");
+    }
+
+    await ref.update({ status: "rejected" });
+    await db.collection("notifications").doc(notificationId).delete();
+    alert("Chat Request Reject చేశావు.");
+    startChatList();
+  } catch (e) {
+    alert("Reject కాలేదు: " + e.message);
+  }
+}
+
+function startChatList() {
+  if (unsubscribeChats) unsubscribeChats();
+
+  const box = $("chatList");
+  box.textContent = "Loading chats...";
+
+  unsubscribeChats = db.collection("chats")
+    .where(
+      currentProfile.role === "director" ? "directorId" : "artistId",
+      "==",
+      currentUser.uid
+    )
+    .onSnapshot(snapshot => {
+      box.innerHTML = "";
+
+      let count = 0;
+
+      snapshot.forEach(doc => {
+        const c = doc.data();
+        if (c.status !== "accepted") return;
+        count++;
+
+        const btn = document.createElement("button");
+        btn.className = "full";
+        btn.textContent = "💬 " +
+          (currentProfile.role === "director" ? c.artistName : c.directorName);
+        btn.onclick = () => openChat(doc.id, c);
+        box.appendChild(btn);
+      });
+
+      if (!count) box.textContent = "Accepted Chats ఇంకా లేవు.";
+    });
+}
+
+function openChat(chatId, chat) {
+  activeChat = chatId;
+  $("chatArea").classList.remove("hidden");
+  $("chatTitle").textContent =
+    currentProfile.role === "director" ? chat.artistName : chat.directorName;
+
+  if (unsubscribeMessages) unsubscribeMessages();
+
+  unsubscribeMessages = db.collection("chats").doc(chatId)
+    .collection("messages").orderBy("createdAt")
+    .onSnapshot(snapshot => {
+      const box = $("messages");
+      box.innerHTML = "";
+
+      snapshot.forEach(doc => {
+        const m = doc.data();
+        const p = document.createElement("p");
+        p.textContent = (m.senderId === currentUser.uid ? "You: " : "") + m.text;
+        p.className = "profile";
+        box.appendChild(p);
+      });
+
+      box.scrollTop = box.scrollHeight;
+    });
+}
+
+async function sendMessage() {
+  const text = $("messageText").value.trim();
+  if (!text || !activeChat) return;
+
+  try {
+    const chatRef = db.collection("chats").doc(activeChat);
+    const chatSnap = await chatRef.get();
+
+    if (!chatSnap.exists || chatSnap.data().status !== "accepted") {
+      return alert("Chat ఇంకా Accept కాలేదు.");
+    }
+
+    await chatRef.collection("messages").add({
+      senderId: currentUser.uid,
+      text,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    $("messageText").value = "";
+  } catch (e) {
+    alert("Message పంపలేకపోయాం: " + e.message);
+  }
+}
+
+function closeChat() {
+  activeChat = null;
+  if (unsubscribeMessages) unsubscribeMessages();
+  unsubscribeMessages = null;
+  $("chatArea").classList.add("hidden");
+}
+
+function cleanupListeners() {
+  [unsubscribeNotifications, unsubscribeChats, unsubscribeMessages]
+    .forEach(fn => { if (fn) fn(); });
+
+  unsubscribeNotifications = null;
+  unsubscribeChats = null;
+  unsubscribeMessages = null;
+  activeChat = null;
+}
+
+async function logout() {
+  cleanupListeners();
+  await auth.signOut();
+}
+
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, ch => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;",
+    '"': "&quot;", "'": "&#39;"
+  })[ch]);
+}
+
+function safeUrl(value) {
+  try {
+    const u = new URL(value);
+    return ["https:", "http:"].includes(u.protocol) ? u.href : "";
+  } catch {
+    return "";
+  }
+}
+</script>
+
+</body>
+</html>
